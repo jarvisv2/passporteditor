@@ -716,3 +716,7 @@ export default function PassportPhotoTool() {
             </div>
           </div>
         )}
+      </main>
+    </div>
+  )
+}
