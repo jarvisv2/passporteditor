@@ -69,7 +69,6 @@ export default function PassportPhotoTool() {
   const [removingBg, setRemovingBg] = useState(false)
   const [bgRemoved, setBgRemoved] = useState(false)
   const [gridDataUrl, setGridDataUrl] = useState<string | null>(null)
-  const [bgRemoved, setBgRemoved] = useState(false)
 
   const [photoCount, setPhotoCount] = useState<6 | 12>(12)
   const [borderWidth, setBorderWidth] = useState<number>(0)
