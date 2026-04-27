@@ -69,6 +69,10 @@ export default function PassportPhotoTool() {
   const [removingBg, setRemovingBg] = useState(false)
   const [bgRemoved, setBgRemoved] = useState(false)
   const [gridDataUrl, setGridDataUrl] = useState<string | null>(null)
+  const [bgRemoved, setBgRemoved] = useState(false)
+
+  const [photoCount, setPhotoCount] = useState<6 | 12>(12)
+  const [borderWidth, setBorderWidth] = useState<number>(0)
 
   const imgRef = useRef<HTMLImageElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -141,10 +145,10 @@ export default function PassportPhotoTool() {
   }
 
   // Apply background color to processed image and generate preview grid
+  // Apply background color, borders, and generate preview grid
   const applyColorAndPreview = useCallback(async () => {
     if (!processedDataUrl) return
 
-    // Flatten: draw bg color + processed image onto canvas
     const img = new Image()
     img.onload = () => {
       // Flat single photo canvas
@@ -152,14 +156,29 @@ export default function PassportPhotoTool() {
       photoCanvas.width = PHOTO_W_PX
       photoCanvas.height = PHOTO_H_PX
       const pCtx = photoCanvas.getContext('2d')!
+      
+      // Draw background
       pCtx.fillStyle = bgColor
       pCtx.fillRect(0, 0, PHOTO_W_PX, PHOTO_H_PX)
+      // Draw photo
       pCtx.drawImage(img, 0, 0, PHOTO_W_PX, PHOTO_H_PX)
 
-      // Grid canvas: 4×6 inches at 300 DPI
-      // Calculate margins to center the grid (accounting for gaps between photos)
-      const totalPhotosW = COLS * PHOTO_W_PX + (COLS - 1) * GAP_PX
-      const totalPhotosH = ROWS * PHOTO_H_PX + (ROWS - 1) * GAP_PX
+      // Draw border if selected
+      if (borderWidth > 0) {
+        // Multiply by 3 so the border is visible on a high-res 300 DPI print
+        pCtx.lineWidth = borderWidth * 3 
+        pCtx.strokeStyle = '#cccccc' // Light gray cut line
+        // Offset by half line width so it doesn't clip off the edges
+        const offset = pCtx.lineWidth / 2
+        pCtx.strokeRect(offset, offset, PHOTO_W_PX - pCtx.lineWidth, PHOTO_H_PX - pCtx.lineWidth)
+      }
+
+      // Grid logic: Use 4 rows for 12 photos, or 2 rows for 6 photos
+      const activeCols = 3
+      const activeRows = photoCount === 12 ? 4 : 2
+
+      const totalPhotosW = activeCols * PHOTO_W_PX + (activeCols - 1) * GAP_PX
+      const totalPhotosH = activeRows * PHOTO_H_PX + (activeRows - 1) * GAP_PX
       const marginX = Math.floor((PAGE_W_PX - totalPhotosW) / 2)
       const marginY = Math.floor((PAGE_H_PX - totalPhotosH) / 2)
 
@@ -170,8 +189,8 @@ export default function PassportPhotoTool() {
       gCtx.fillStyle = '#ffffff'
       gCtx.fillRect(0, 0, PAGE_W_PX, PAGE_H_PX)
 
-      for (let row = 0; row < ROWS; row++) {
-        for (let col = 0; col < COLS; col++) {
+      for (let row = 0; row < activeRows; row++) {
+        for (let col = 0; col < activeCols; col++) {
           const x = marginX + col * (PHOTO_W_PX + GAP_PX)
           const y = marginY + row * (PHOTO_H_PX + GAP_PX)
           gCtx.drawImage(photoCanvas, x, y, PHOTO_W_PX, PHOTO_H_PX)
@@ -181,7 +200,7 @@ export default function PassportPhotoTool() {
       setGridDataUrl(gridCanvas.toDataURL('image/jpeg', 0.95))
     }
     img.src = processedDataUrl
-  }, [processedDataUrl, bgColor])
+  }, [processedDataUrl, bgColor, photoCount, borderWidth]) // Make sure these dependencies are here!
 
   useEffect(() => {
     if (step === 'preview') {
@@ -189,12 +208,12 @@ export default function PassportPhotoTool() {
     }
   }, [step, applyColorAndPreview])
 
-  // Also regenerate grid when bgColor changes in preview step
+  // Also regenerate grid when settings change in preview step
   useEffect(() => {
     if (step === 'preview') {
       applyColorAndPreview()
     }
-  }, [bgColor]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [bgColor, photoCount, borderWidth]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDownload = () => {
     if (!gridDataUrl) return
@@ -596,7 +615,58 @@ export default function PassportPhotoTool() {
                   </div>
                 )}
               </div>
+{/* --- NEW CUSTOMIZATION PANEL --- */}
+              {gridDataUrl && (
+                <div className="mt-6 p-5 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col md:flex-row gap-6 items-start md:items-center">
+                  
+                  {/* Photo Count Selection */}
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-gray-700 mb-3">Number of Photos</p>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="radio" 
+                          checked={photoCount === 6}
+                          onChange={() => setPhotoCount(6)}
+                          className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">6 Photos (Half Page)</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="radio" 
+                          checked={photoCount === 12}
+                          onChange={() => setPhotoCount(12)}
+                          className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">12 Photos (Full Page)</span>
+                      </label>
+                    </div>
+                  </div>
 
+                  {/* Vertical Divider for larger screens */}
+                  <div className="hidden md:block w-px h-12 bg-gray-200"></div>
+
+                  {/* Border Width Slider */}
+                  <div className="flex-1 w-full">
+                    <div className="flex justify-between mb-2">
+                      <p className="text-sm font-semibold text-gray-700">Cut-Line Border Stroke</p>
+                      <span className="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{borderWidth}px</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="5" 
+                      step="1"
+                      value={borderWidth} 
+                      onChange={(e) => setBorderWidth(Number(e.target.value))}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    />
+                  </div>
+                  
+                </div>
+              )}
+              {/* --- END NEW CUSTOMIZATION PANEL --- */}
               {/* Change BG color while in preview */}
               {gridDataUrl && (
                 <div className="mt-4 p-4 bg-gray-50 rounded-xl">
