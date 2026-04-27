@@ -14,7 +14,7 @@ const config = defineConfig({
     tanstackStart({
       prerender: {
         enabled: true, // THIS IS THE MAGIC FLAG WE MISSED
-        routes: ['/', '/PassportTool/'], // Added the base path here to be completely safe
+        routes: ['/', '/passporteditor/'], // Added the base path here to be completely safe
         crawlLinks: true
       }
     }),
